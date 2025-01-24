@@ -97,7 +97,7 @@ class ReinforceConfig(PPOConfig):
     
     lora_bias:str = field(default="none")
 
-    train_dataset_name :str = field(default="/data/hh-rlhf")
+    train_dataset_name :str = field(default="Anthropic/hh-rlhf")
     train_dataset_split:str = field(default="train[:100%]")
 
     advantage_whiten :bool = field(default = True) # This has to be enabled just to provided a simple baseline for reinforce, considering that the reinforce without any baseline will fail.
