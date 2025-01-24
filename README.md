@@ -10,6 +10,7 @@ python grpo.py
 ```
 # Default Setting
 policy model : Qwen/Qwen2.5-1.5B-Instruct
+
 reward model/function : OpenAssistant/reward-model-deberta-v3-large-v2
 ...
 ALL setting is on the file you run.
