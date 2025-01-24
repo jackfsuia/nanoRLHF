@@ -12,7 +12,9 @@ python grpo.py
 policy model : Qwen/Qwen2.5-1.5B-Instruct
 
 reward model/function : OpenAssistant/reward-model-deberta-v3-large-v2
+
 ...
+
 ALL setting is on the file you run.
 # Performance
 The training throughput is approximately 1s /episode with the default settings. Reward results are as follows:
