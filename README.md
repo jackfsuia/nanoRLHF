@@ -8,6 +8,8 @@ cd nanoRLHF/grpo
 ```
 python grpo.py
 ```
+# Features
+See [features](docs/features.md).
 # Default Setting
 policy model : Qwen/Qwen2.5-1.5B-Instruct
 
