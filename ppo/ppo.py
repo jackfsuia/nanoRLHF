@@ -1,0 +1,399 @@
+# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import gc
+import numpy as np
+import shutil
+from transformers import (
+    BaseImageProcessor,
+    DataCollatorWithPadding,
+    FeatureExtractionMixin,
+    GenerationConfig,
+    PreTrainedTokenizerBase,
+    ProcessorMixin,
+    Trainer,
+    TrainerCallback,
+    TrainerControl,
+    is_wandb_available,
+)
+from vllm import LLM, SamplingParams
+
+from accelerate import PartialState
+from datasets import load_dataset
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, PeftModel
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    HfArgumentParser,
+    EarlyStoppingCallback,
+    TrainingArguments,
+)
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from trl import ModelConfig, PPOConfig, PPOTrainer
+from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
+import pickle
+from accelerate import Accelerator
+from datasets import Dataset
+import json, os
+from typing import Dict, List, Optional, Tuple, Union
+from tqdm import tqdm
+from trl.models.utils import unwrap_model_for_generation
+import time
+from dataclasses import dataclass, field
+from typing import List, Literal, Optional
+from accelerate.utils import broadcast, gather_object
+from ppo_trainer import PPOTrainer
+from memory_profiler import profile
+import psutil
+from multiprocessing import Process, set_start_method, Queue, get_start_method
+import sys
+from value_initializer import finetuned_value_model
+import random
+
+random.seed(0)
+torch.manual_seed(42)
+
+# ALL parameters -----------------------------------------------------------------------------------------------------------
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+set_start_method('spawn', force=True)
+base_model_name_or_path = "Qwen/Qwen2.5-1.5B-Instruct"
+project_name = "rlhf"
+os.environ["WANDB_PROJECT"] = project_name
+
+
+@dataclass
+class Value_Finetune_Config(TrainingArguments):
+    train_data_size: int = field(default=500)#500
+    train_split_rate: float = field(default=0.8)
+
+
+finetune_args = Value_Finetune_Config(
+    num_train_epochs=8,#20
+    save_total_limit=3,
+    bf16=True,
+    per_device_train_batch_size=32,#32
+    per_device_eval_batch_size=50,#50
+    gradient_accumulation_steps=12,#12
+    eval_strategy="steps",
+    eval_steps=1,
+    save_strategy="steps",
+    learning_rate=1e-3,#1e-3
+    warmup_ratio=0,
+    # lr_scheduler_type="constant",
+    lr_scheduler_type="reduce_lr_on_plateau",
+    lr_scheduler_kwargs={"mode":'min',"factor":0.5,'patience':0},
+    log_level="info",
+    report_to="tensorboard",
+    logging_strategy="steps",
+    logging_steps=1,
+    output_dir="/data/cache_value_model",
+    logging_dir ="/data/cache_value_model/logs",
+    gradient_checkpointing=True,
+    metric_for_best_model="eval_loss",
+    greater_is_better=False,
+    remove_unused_columns= False,
+    load_best_model_at_end=True,
+)
+
+
+@dataclass
+class MyPPOConfig(PPOConfig):
+    save_value_model: bool = field(default=True)
+    early_stopping_patience: int = field(default=1000000)
+
+    policy_learning_rate: float = field(default=6e-6)
+    value_learning_rate: float = field(default=9e-6)
+
+    use_lora: bool = field(default=True)
+    lora_r: int = field(default=64)
+    lora_alpha: int = field(default=16)
+    lora_dropout: float = field(default=0.0)
+    lora_bias: str = field(default="none")
+    lora_target_modules: list[str] = field(
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ]
+    )
+    modules_to_save: list[str] = field(
+        default_factory=lambda: ["embed_tokens", "lm_head", "score"]
+    )
+
+    value_use_lora: bool = field(default=True)
+    value_lora_r: int = field(default=64)
+    value_lora_alpha: int = field(default=16)
+    value_lora_dropout: float = field(default=0.0)
+    value_lora_bias: str = field(default="none")
+    value_lora_target_modules: list[str] = field(
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ]
+    )
+    value_modules_to_save: list[str] = field(
+        default_factory=lambda: ["embed_tokens", "lm_head", "score", "wte", "wpe"]
+    )
+
+    reward_batch_size: int = field(default=16)
+
+    train_dataset_name: str = field(default="/data/hh-rlhf")
+    train_dataset_split: str = field(default="train[:100%]")
+
+    advantage_whiten: bool = field(default=False)  # False
+
+
+training_args = MyPPOConfig(
+    exp_name="ppo-v1",
+    reward_model_path="OpenAssistant/reward-model-deberta-v3-large-v2",
+    whiten_rewards=False,
+    kl_coef=0.01,  # 0.01
+    cliprange=0.2,  # 0.2
+    vf_coef=1,
+    cliprange_value=0.2,
+    gamma=1.0,
+    lam=0.95,  # 0.95
+    temperature=0.9,
+    warmup_steps=0,  # 4
+    lr_scheduler_type="cosine_with_min_lr",
+    lr_scheduler_kwargs={"min_lr_rate": 0.1},
+    response_length=1500,
+    ## mini_batch_size = per_device_train_batch_size * gradient_accumulation_steps
+    ## batch_size = per_device_train_batch_size * gradient_accumulation_steps * num_mini_batches
+    per_device_train_batch_size=4,  # 4
+    gradient_accumulation_steps=8,  # 8
+    num_mini_batches=16,  # 16
+    num_ppo_epochs=1,
+    total_episodes=250000,  # 100000
+    local_rollout_forward_batch_size=16,
+    bf16=True,
+    gradient_checkpointing=True,
+    missing_eos_penalty=None,
+    report_to="wandb",
+    sft_model_path=base_model_name_or_path,
+    eval_strategy="steps",
+    eval_steps=1,
+    save_strategy="steps",
+    save_steps=1,
+    save_total_limit=8,
+    log_level="info",
+    output_dir=f"{base_model_name_or_path}/{project_name}",
+    logging_dir=f"{base_model_name_or_path}/{project_name}/logs",
+    logging_strategy="steps",
+    logging_steps=1,
+    metric_for_best_model="eval_objective/rlhf_reward_old",
+    greater_is_better=True,
+    load_best_model_at_end=True,
+    stop_token="eos",
+    dataset_num_proc=6,
+)
+
+reward_model, rm_tokenizer = AutoModelForSequenceClassification.from_pretrained(
+    training_args.reward_model_path, device_map="cpu"
+).eval(), AutoTokenizer.from_pretrained(training_args.reward_model_path)
+
+
+def reward_func(pmt_and_responses, eos_token):
+    reward_model.to("cuda")
+
+    episode_num = len(pmt_and_responses)
+
+    rewards = torch.zeros(episode_num)
+
+    questions = []
+    responses = []
+
+    for pmt_and_response in pmt_and_responses:
+        # get the question and response
+        question_idx = pmt_and_response.find("user\n") + len("user\n")
+        question_end_idx = pmt_and_response.find("<|im_end|>", question_idx)
+        question = pmt_and_response[question_idx:question_end_idx]
+        response_idx = pmt_and_response.find("<|im_start|>assistant\n") + len(
+            "<|im_start|>assistant\n"
+        )
+        endix = pmt_and_response.find(eos_token, response_idx)
+        if endix == -1:
+            response = pmt_and_response[response_idx:]
+        else:
+            response = pmt_and_response[response_idx:endix]
+
+        questions.append(question)
+        responses.append(response)
+
+    # reward the question and response, per https://huggingface.co/OpenAssistant/reward-model-deberta-v3-large-v2
+    for i in tqdm(range(0, episode_num, training_args.reward_batch_size), desc="Rewarding"):
+        inputs = rm_tokenizer(
+            questions[i : i + training_args.reward_batch_size],
+            responses[i : i + training_args.reward_batch_size],
+            return_tensors="pt",
+            padding=True,
+        )
+        inputs = {key: value.to(reward_model.device) for key, value in inputs.items()}
+        rewards[i : i + training_args.reward_batch_size] = (
+            reward_model(**inputs).logits.cpu().detach().squeeze()
+        )
+
+    reward_model.to("cpu")
+    torch.cuda.empty_cache()
+    return rewards
+
+
+if __name__ == "__main__":
+
+    # remove output_dir if exists
+    shutil.rmtree(training_args.output_dir, ignore_errors=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        training_args.sft_model_path,
+        padding_side="left",
+        trust_remote_code=False,
+    )
+    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    if tokenizer.chat_template is None:
+        tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
+
+    # load policy, value, reference model to cpu ------------------------------------
+
+    value_model = AutoModelForSequenceClassification.from_pretrained(
+        training_args.sft_model_path,
+        trust_remote_code=True,
+        num_labels=1,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="flash_attention_2",
+    )
+    value_model.config.pad_token_id = tokenizer.pad_token_id
+    ref_policy = AutoModelForCausalLM.from_pretrained(
+        training_args.sft_model_path,
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="flash_attention_2",
+    ).eval()
+    policy = AutoModelForCausalLM.from_pretrained(
+        training_args.sft_model_path,
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="flash_attention_2",
+    )
+
+    if training_args.use_lora:
+
+        lora_config = LoraConfig(
+            r=training_args.lora_r,
+            lora_alpha=training_args.lora_alpha,
+            target_modules=training_args.lora_target_modules,
+            lora_dropout=training_args.lora_dropout,
+            bias=training_args.lora_bias,
+            task_type="CAUSAL_LM",
+            modules_to_save=training_args.modules_to_save,  # This argument serves for adding new tokens.
+        )
+        policy = get_peft_model(policy, lora_config)
+        policy.print_trainable_parameters()
+        if training_args.gradient_checkpointing:
+            policy.enable_input_require_grads()
+
+    if training_args.value_use_lora:
+
+        lora_config = LoraConfig(
+            r=training_args.value_lora_r,
+            lora_alpha=training_args.value_lora_alpha,
+            target_modules=training_args.value_lora_target_modules,
+            lora_dropout=training_args.value_lora_dropout,
+            bias=training_args.value_lora_bias,
+            task_type="CAUSAL_LM",
+            modules_to_save=training_args.value_modules_to_save,  # This argument serves for adding new tokens.
+        )
+
+        value_model = get_peft_model(value_model, lora_config)
+        value_model.print_trainable_parameters()
+        if training_args.gradient_checkpointing:
+            value_model.enable_input_require_grads()
+
+    # load dataset ------------------------------------------
+
+    train_dataset = load_dataset(
+        training_args.train_dataset_name, split=training_args.train_dataset_split
+    )
+
+    def prepare_dataset(dataset, tokenizer):
+        """pre-tokenize the dataset before training; only collate during training"""
+        # use your model chat template
+        chat_template = "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\nQUESTION<|im_end|>\n<|im_start|>assistant\n"
+
+        def tokenize(element):
+
+            question_sidx = element["chosen"].find("Human: ") + len("Human: ")
+            question_eidx = element["chosen"].find("Assistant: ", question_sidx)
+            question = element["chosen"][question_sidx:question_eidx]
+
+            temp_question = chat_template.replace("QUESTION", question)
+
+            return {
+                "input_ids": tokenizer(
+                    temp_question,
+                    padding=False,
+                )["input_ids"]
+            }
+
+        return dataset.map(
+            tokenize,
+            # batched=True,
+            remove_columns=dataset.column_names,
+            num_proc=training_args.dataset_num_proc,
+        )
+
+    train_dataset = prepare_dataset(train_dataset, tokenizer)
+
+    # initializing the value model. Key to ppo success, especially for rule-based reward, where no initialization is provided.  -----------------------------------
+    print("Initializing the value model, it might take about 15 minutes...")
+    value_model = finetuned_value_model(
+        value_model,
+        policy,
+        ref_policy,
+        reward_func,
+        train_dataset,
+        tokenizer,
+        training_args,
+        finetune_args,
+    )
+
+    # ppo training ---------------------------------------------------------------------
+    print("Now start PPO training...")
+    trainer = PPOTrainer(
+        config=training_args,
+        processing_class=tokenizer,
+        policy=policy,
+        ref_policy=ref_policy,
+        value_model=value_model,
+        train_dataset=train_dataset,
+        reward_func=reward_func,
+        callbacks=[
+            EarlyStoppingCallback(
+                early_stopping_patience=training_args.early_stopping_patience
+            )
+        ],
+    )
+
+    trainer.train()
