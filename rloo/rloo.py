@@ -99,7 +99,7 @@ class RLOOConfig(PPOConfig):
     
     lora_bias:str = field(default="none")
 
-    train_dataset_name :str = field(default="/data/hh-rlhf")
+    train_dataset_name :str = field(default="Anthropic/hh-rlhf")
     train_dataset_split:str = field(default="train[:100%]")
 
     advantage_whiten :bool = field(default= False)# this is default to be False since RLOO has provided a baseline
