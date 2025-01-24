@@ -17,7 +17,7 @@ reward model/function : OpenAssistant/reward-model-deberta-v3-large-v2
 
 ALL setting is on the file you run.
 # Performance
-The training throughput is approximately 1s /episode with the default settings. Reward results are as follows:
+The training throughput is approximately 1s /episode with the default settings. Reward results are as follows (not finished the whole run):
 ![performance](docs/perf.png)
 # Acknowledgement
 The code is adapted from trl, but way more **efficient**, more **flexible** reward function, specially designed for researchers that want to try small RLHF experiments quick on a single GPU.
