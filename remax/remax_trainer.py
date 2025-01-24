@@ -163,7 +163,7 @@ def vllm_generate(model,tokenizer,prompts,temperature,max_tokens):
       
     response = torch.stack(response, dim=0)
 
-    #######生成baseline:
+    ####### generating baseline,temperature=0:
     sampling_params = SamplingParams(temperature=0.0, top_p=0.95, n=1, max_tokens=max_tokens, logprobs =1,detokenize=False,ignore_eos=False, seed=random.randint(1, 5000))
     outputs_ALL = llm.generate(prompts, sampling_params)
 
