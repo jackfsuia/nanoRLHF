@@ -160,7 +160,7 @@ class MyPPOConfig(PPOConfig):
 
     reward_batch_size: int = field(default=16)
 
-    train_dataset_name: str = field(default="/data/hh-rlhf")
+    train_dataset_name: str = field(default="Anthropic/hh-rlhf")
     train_dataset_split: str = field(default="train[:100%]")
 
     advantage_whiten: bool = field(default=False)  # False
