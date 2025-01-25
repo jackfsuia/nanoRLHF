@@ -23,6 +23,8 @@ policy model : Qwen/Qwen2.5-1.5B-Instruct
 
 reward model/function : OpenAssistant/reward-model-deberta-v3-large-v2
 
+max_reponse_length: 1500
+
 dataset: Anthropic/hh-rlhf
 
 ...
