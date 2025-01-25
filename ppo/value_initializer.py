@@ -276,8 +276,6 @@ def finetuned_value_model(
             query_response = torch.cat((query, responses[i : i + local_rollout_forward_batch_size]), dim=1)
 
             response = query_response[:, context_length:]
-
-            ############### 输出比值部分的 log_prob
             logprob = small_forward(policy, query_response, tokenizer.pad_token_id)
             logprob = logprob[0][:, context_length - 1 : -1].clone()
             gc.collect()
@@ -285,8 +283,6 @@ def finetuned_value_model(
             logprob /= ppo_args.temperature
             logprob = F.log_softmax(logprob, dim=-1)
             logprob = torch.gather(logprob, 2, response.unsqueeze(-1)).squeeze(-1)
-
-            ###############输出单步价值 ref_logprob,value
             ref_logprob = small_forward(ref_policy, query_response, tokenizer.pad_token_id)
             ref_logprob = ref_logprob[0][:, context_length - 1 : -1].clone()
             gc.collect()
