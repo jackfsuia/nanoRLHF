@@ -384,7 +384,7 @@ class PPOTrainer(Trainer):
 
             optimizer_cls, optimizer_kwargs = self.get_optimizer_cls_and_kwargs(self.args, opt_model)
             if "lr" in optimizer_kwargs:
-                del optimizer_kwargs["lr"]  # 删除全局的 lr 参数
+                del optimizer_kwargs["lr"]  # delete global lr
                 
             self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
 
