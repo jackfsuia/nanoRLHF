@@ -312,7 +312,7 @@ def finetuned_value_model(
         logprobs = torch.cat(logprobs, 0)
         ref_logprobs = torch.cat(ref_logprobs, 0)
         sequence_lengths = torch.cat(sequence_lengths, 0)
-        # sequence_lengths是最后一个生成token的下标，sequence_lengths_p1是这个位置的后一个位置
+        # sequence_lengths is the index of the last generated token, sequence_lengths_p1 is the position right after this index
         del ref_logprob
         gc.collect()
         torch.cuda.empty_cache()
@@ -329,13 +329,13 @@ def finetuned_value_model(
         sequence_lengths_p1 = sequence_lengths + 1
         padding_mask_p1 = response_idxs > (sequence_lengths_p1.unsqueeze(1))
 
-        # 4. compute rewards，reward的长度是value的长度，稀疏reward算在EOS状态上，即reward(s_EOS,a) = 稀疏reward
+        # 4. Compute rewards. The length of the reward is the same as the length of the value. Sparse rewards are assigned to the EOS state, i.e., reward(s_EOS, a) = sparse reward.
 
         kl = logprobs - ref_logprobs
         non_score_reward = -ppo_args.kl_coef * kl
         rewards = non_score_reward.clone()
         actual_start = torch.arange(rewards.size(0), device=rewards.device)
-        # 原因是value函数的拟合和reward在哪一步产生无关，只要在value后面的状态产生就好
+        #  value function is independent of the step at which the reward is generated, as long as the reward is generated in a state that follows behind the value state.
         actual_end = torch.where(
             sequence_lengths_p1 < rewards.size(1), sequence_lengths_p1, sequence_lengths
         )

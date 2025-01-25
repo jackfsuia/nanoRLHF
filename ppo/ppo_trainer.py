@@ -462,7 +462,7 @@ class PPOTrainer(Trainer):
                 or operator(metric_value, self.state.best_metric)
             ):
                 self.state.best_metric = metric_value
-                #由于指标慢一步，改成保存上个checkpoint
+                # Since the metric is one step behind, change to save the previous checkpoint.
                 if metric_to_check.endswith('_old'):
                     best_checkpoint_path = os.path.join(run_dir, f"{PREFIX_CHECKPOINT_DIR}-{max(self.state.global_step-self.args.save_steps,1)}")
                     if os.path.exists(best_checkpoint_path):
@@ -645,7 +645,7 @@ class PPOTrainer(Trainer):
                 logprobs = torch.cat(logprobs, 0)
                 ref_logprobs = torch.cat(ref_logprobs, 0)
                 sequence_lengths = torch.cat(sequence_lengths, 0)
-                # sequence_lengths是最后一个生成token的下标，sequence_lengths_p1是这个位置的后一个位置
+                # sequence_lengths is the index of the last generated token, sequence_lengths_p1 is the position right after this index
                 values = torch.cat(values, 0)
                 del (ref_logprob, full_value, value, unwrapped_model)
                 torch.cuda.empty_cache()
@@ -664,16 +664,16 @@ class PPOTrainer(Trainer):
                 sequence_lengths_p1 = sequence_lengths + 1
                 padding_mask_p1 = response_idxs > (sequence_lengths_p1.unsqueeze(1))
 
-                #注意到 value考虑的状态是初始状态一直到EOS的状态，所以一共（序列长度+1）个状态
+                # Note that the value considers the states from the initial state up to the EOS state, so there are a total of (sequence length + 1) states.
                 values = torch.masked_fill(values, padding_mask_p1, 0)
 
-                # 4. compute rewards，reward的长度是value的长度，稀疏reward算在EOS状态上，即reward(s_EOS,a) = 稀疏reward
+                # 4. Compute rewards. The length of the reward is the same as the length of the value. Sparse rewards are assigned to the EOS state, i.e., reward(s_EOS, a) = sparse reward.
 
                 kl = logprobs - ref_logprobs
                 non_score_reward = -args.kl_coef * kl
                 rewards = non_score_reward.clone()
                 actual_start = torch.arange(rewards.size(0), device=rewards.device)
-                # 原因是value函数的拟合和reward在哪一步产生无关，只要在value后面的状态产生就好
+                #  value function is independent of the step at which the reward is generated, as long as the reward is generated in a state that follows behind the value state.
                 actual_end = torch.where(sequence_lengths_p1 < rewards.size(1), sequence_lengths_p1, sequence_lengths)
 
                 # 4.5 reward
