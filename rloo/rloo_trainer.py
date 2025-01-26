@@ -596,7 +596,7 @@ class RLOOTrainer(Trainer):
                 # 6. compute RLOO advantages ------------------------
                 rlhf_reward = rlhf_reward.view(-1, args.rloo_sample_N)
                 baseline = (rlhf_reward.sum(dim=1, keepdim=True) - rlhf_reward) / (args.rloo_sample_N - 1)
-                advantages = (rlhf_reward - baseline)/args.rloo_sample_N
+                advantages = rlhf_reward - baseline
 
                 # randomly keep batch_size samples, abandon rest batch_size*(args.rloo_sample_N - 1) samples to save for&backward time
 
