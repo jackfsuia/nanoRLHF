@@ -613,9 +613,8 @@ class RLOOTrainer(Trainer):
                 padding_mask = padding_mask[torch.arange(batch_size), random_indices]
                 
                 #------------------------
-
                 if args.advantage_whiten:
-                    advantages = torch.ones_like(advantages)
+                    advantages = masked_whiten(advantages, torch.ones_like(advantages))
                 
             ref_policy.to("cpu")
             torch.cuda.empty_cache()
