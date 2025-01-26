@@ -107,10 +107,7 @@ class RAFTConfig(PPOConfig):
 training_args = RAFTConfig(
     exp_name = 'raft-v1',
     reward_model_path = 'OpenAssistant/reward-model-deberta-v3-large-v2',
-    whiten_rewards=False,
     kl_coef=0.01,#0.01 
-    cliprange = 0.2,#0.2
-    cliprange_value = 0.01,
     lam=0.95,#0.95 
     temperature = 0.9,
 
