@@ -509,7 +509,7 @@ class RLOOTrainer(Trainer):
                 with unwrap_model_for_generation(model, self.accelerator) as unwrapped_model:
                     unwrapped_model.eval()
 
-                    queries = queries.repeat(args.rloo_sample_N, 1)
+                    queries = torch.repeat_interleave(queries, repeats = args.rloo_sample_N, dim=0)
 
                     for i in tqdm(range(0, queries.shape[0], local_rollout_forward_batch_size),desc="Calcualting KL, prob data of samples"):
                         query = queries[i : i + local_rollout_forward_batch_size]
