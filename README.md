@@ -12,7 +12,7 @@ Compared to [trl](https://github.com/huggingface/trl), nanoRLHF
 # Usage
 Take GRPO for example, 
 ```bash
-cd nanoRLHF/grpo
+cd nanoRLHF/GRPO
 ```
 ```
 python grpo.py
