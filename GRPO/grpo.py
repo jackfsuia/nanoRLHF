@@ -112,7 +112,6 @@ training_args = GRPOConfig(
     kl_coef=0.01,#0.01 
     cliprange = 0.2,#0.2
     cliprange_value = 0.01,
-    lam=0.95,#0.95 
     temperature = 0.9,
 
     learning_rate = 6e-6,  #6e-6
