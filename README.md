@@ -1,7 +1,7 @@
 # nanoRLHF
 RLHF experiments on a single A100 40G GPU.
 # Updates
-2023.08.01: [a simple deepseek-r1 reproducing code](examples/r1-v0).
+2025.02.02: [a simple deepseek-r1 reproducing code](examples/r1-v0).
 # Features
 Compared to [trl](https://github.com/huggingface/trl), nanoRLHF
 
