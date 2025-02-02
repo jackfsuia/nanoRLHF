@@ -509,7 +509,7 @@ class RemaxTrainer(Trainer):
                 responses_decoded = self.tokenizer.batch_decode(res_and_bs)
                 scores = self.reward_func([i+j for i, j in zip(quesiton_string + quesiton_string, responses_decoded)],self.tokenizer.eos_token).to(main_device)
                 scores_reward = scores[:batch_size_qs].mean()
-                # score - score_baseline
+                # score - score_baseline, this is actually advantage.
                 scores = scores[:batch_size_qs] - scores[batch_size_qs:]
 
                 gc.collect()
