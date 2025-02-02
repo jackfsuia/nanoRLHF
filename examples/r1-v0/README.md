@@ -22,7 +22,7 @@ cd nanoRLHF/examples/r1-v0
 python grpo_r1.py
 ```
 # Features
-1. Sparse GRPO：We abandon the samples whose reward is 0. That saved us a lot of time without losing much performance.
+1. Sparse GRPO：We abandon the samples whose advantages are 0. That saved us a lot of time without losing much performance.
 2. To save more time, we implement dynamic batching for the sample generating and the minibatch forwarding and backwarding.
   
 These features enable efficient training of Qwen-1.5B with a response length of 8000 tokens.
