@@ -537,7 +537,7 @@ class GRPOTrainer(Trainer): # sparse realization
                 random_indices = torch.randint(0, args.grpo_sample_N, (batch_size,))
                 reshaped_scores = scores.view(-1,args.grpo_sample_N)
 
-                # score = score - score_baseline
+                # score = score - score_baseline, this is actually advantage.
                 reshaped_scores = (reshaped_scores - reshaped_scores.mean(dim=1, keepdim=True))/reshaped_scores.std(dim=1, keepdim=True)
                 reshaped_scores = reshaped_scores[torch.arange(batch_size), random_indices]
                 scores = reshaped_scores.view(-1)
@@ -648,7 +648,7 @@ class GRPOTrainer(Trainer): # sparse realization
 
                 padding_mask_p1 = response_idxs > (sequence_lengths_p1.unsqueeze(1))
 
-                # 4. compute rewards，reward的长度是value的长度，稀疏reward算在EOS状态上，即reward(s_EOS,a) = 稀疏reward
+                # 4. compute rewards
 
                 rewards = torch.zeros_like(ref_logprobs)
                 actual_start = torch.arange(rewards.size(0), device=rewards.device)
