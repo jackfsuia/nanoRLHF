@@ -26,3 +26,6 @@ python grpo_r1.py
 2. To save more time, we implement dynamic batching for the sample generating and the minibatch forwarding and backwarding.
    
 These features enable efficient training of Qwen-1.5B with a response length of 8000 tokens.
+
+# To do
+ We're trying to reproduce large scale ubiquitous self-relections in small models in the future.
