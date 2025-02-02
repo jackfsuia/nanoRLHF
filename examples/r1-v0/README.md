@@ -28,4 +28,4 @@ python grpo_r1.py
 These features enable efficient training of Qwen-1.5B with a response length of 8000 tokens.
 
 # To do
- We have been trying to reproduce large scale ubiquitous self-relections in small models. This one experiment is just a small piece of effort to show.
+ We have been trying to reproduce large scale ubiquitous self-relections in small models. This one experiment is just a small piece of effort for show.
