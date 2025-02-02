@@ -559,7 +559,7 @@ class GRPOTrainer(Trainer): # sparse realization
                 gc.collect()
                 log_responses_length = first_true_indices(responses == processing_class.pad_token_id)
                 
-                # Here we use a "sparse" implementation to save time, which is, we abandon the query-reponses samples whose reward/score is 0. We assume and observed that this is ok.-------
+                # Here we use a "sparse" implementation to save time, which is, we abandon the query-reponses samples whose advantage is 0. We assume and observed that this is ok.-------
 
                 # 1. filter out scores=0 samples
                 non_zero_sample_idx = torch.where(scores != 0)[0]
