@@ -504,7 +504,7 @@ class GRPOTrainer(Trainer):
                 random_indices = torch.randint(0, args.grpo_sample_N, (batch_size,))
                 
                 reshaped_scores = scores.view(-1,args.grpo_sample_N)
-                # score = score - score_baseline
+                # score = score - score_baseline, this is actually advantage.
                 reshaped_scores = (reshaped_scores - reshaped_scores.mean(dim=1, keepdim=True))/reshaped_scores.std(dim=1, keepdim=True)
                 reshaped_scores = reshaped_scores[torch.arange(batch_size), random_indices]
                 scores = reshaped_scores.view(-1)
