@@ -1,7 +1,7 @@
 # nanoRLHF
 RLHF experiments on a single A100 40G GPU.
 # Updates
-2025.02.02: [A simple deepseek-r1 reproducing code](examples/r1-v0). For that, we introduce "sparse GRPO" to enable efficient training of Qwen-1.5B with a response length of 8000 tokens.
+2025.02.02: [A simple deepseek-r1 reproducing code](examples/r1-v0).
 # Features
 Compared to [trl](https://github.com/huggingface/trl), nanoRLHF
 
