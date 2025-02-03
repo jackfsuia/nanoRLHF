@@ -177,7 +177,7 @@ training_args = GRPOConfig(
 # define correctness function ------------------------------------
 
 def call_with_timeout(func, *args, timeout=0.015, **kwargs):
- # from ./eval/, this is to prevent long computing, such as 2^(2^100000). 0.015s is the magic time for you to decide.
+ # from .utils/eval/, this is to prevent long computing, such as 2^(2^100000). 0.015s is the magic time for you to decide.
     output_queue = multiprocessing.Queue()  
     process_args = args + (output_queue,)  
     process = multiprocessing.Process(target=func, args=process_args, kwargs=kwargs)  
