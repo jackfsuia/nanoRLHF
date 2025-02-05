@@ -11,7 +11,7 @@ We use [Qwen-2.5-1.5B](https://huggingface.co/Qwen/Qwen2.5-1.5B) as the base mod
 **Response length (tokens):**
 ![response len](len.png)
 **Reward:**
-![reward](reward.png)
+![reward](rewar.png)
 
 # Usage
 This code runs on a single A100 40G. To reproduce, run
