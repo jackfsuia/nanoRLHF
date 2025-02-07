@@ -1,7 +1,7 @@
 # nanoRLHF
 RLHF experiments on a single A100 40G GPU.
 # Updates
-2025.02.02: [A simple DeepSeek R1-Zero reproducing code](examples/r1-v0). To enable efficient training for sequences up to 8000 tokens long, we introduce "sparse GRPO" and implement dynamic mini batching.
+2025.02.02: [A simple DeepSeek R1-Zero reproducing code](examples/r1-v0). To enable efficient training for sequences up to 8000 tokens long, we introduce "sparse GRPO" and implement dynamic mini-batching.
 # Features
 Compared to [trl](https://github.com/huggingface/trl), nanoRLHF
 
