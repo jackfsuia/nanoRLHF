@@ -34,8 +34,8 @@ These features enable efficient training of Qwen-1.5B with a response length of 
 If this work is helpful, please kindly cite as:
 
 ```bibtex
-@article{r1v0,
-  title={r1v0: deepSeek R1-Zero reproduing attempts}, 
+@article{nanoRLHF/r1-v0,
+  title={nanoRLHF/r1-v0: deepSeek R1-Zero reproduing attempts}, 
   author={Yannan Luo},
   year={2025},
   url={https://github.com/jackfsuia/nanoRLHF/edit/main/examples/r1-v0}
