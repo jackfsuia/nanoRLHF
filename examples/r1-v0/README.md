@@ -29,3 +29,15 @@ These features enable efficient training of Qwen-1.5B with a response length of 
 
 # To do
  We have been trying to reproduce large scale ubiquitous self-relections in small models. This one experiment is just a small piece of effort for show.
+## Citation
+
+If this work is helpful, please kindly cite as:
+
+```bibtex
+@article{r1v0,
+  title={r1v0: deepSeek R1-Zero reproduing attempts}, 
+  author={Yannan Luo},
+  year={2025},
+  url={https://github.com/jackfsuia/nanoRLHF/edit/main/examples/r1-v0}
+}
+```
