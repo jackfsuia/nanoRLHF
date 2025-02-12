@@ -7,7 +7,7 @@ Compared to [trl](https://github.com/huggingface/trl), nanoRLHF
 
 1. is **much more efficient** running on a single GPU and **allows for bigger models**. This is done by using vllm to generate samples, model alternate offloadings, LoRA and some minor modifications of trl codes.
 2. provides **GRPO, ReMax and RAFT implementations**, and a slightly different RLOO where we abandon some examples to save time.
-3. **seletively enables advantage whiten** according to the algorithm you choose. To my understanding, advantage whiten is used to provide a simple dynamic baseline for advantage function. For algorithms like GRPO, PPO, RLOO, Remax, which themself have provided a baseline, we disable the advantage whiten by default. For Reinforce, we enable it.
+3. **seletively enables advantage whiten** according to the algorithm you choose. To my understanding, advantage whiten is used to provide a simple dynamic baseline for advantage function. For algorithms like GRPO, PPO, RLOO, Remax, which themself have provided a better baseline, we disable the advantage whiten by default. For Reinforce, we enable it.
 4. uses a **changing random seed in vllm generation** to avoid overfitting.
 5. provides a **more flexible reward function design**, easier to be customized for rule-based reward.
 6. provides value model initialization for PPO, this is extremely crutial for successful training of PPO, especially for rule-based reward, where you have no reward model to initialize your value model. That might cause the training to be compeletely stagnant right from the start.
