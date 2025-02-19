@@ -552,7 +552,7 @@ class GRPOTrainer(Trainer): # sparse realization
                 log_scores =  log_scores.view(-1,args.grpo_sample_N)
                 log_scores = log_scores[torch.arange(batch_size), random_indices]
                 log_scores = log_scores.view(-1)
-                responses_decoded = [responses_decoded[i * 4 + idx] for i, idx in enumerate(random_indices)]
+                responses_decoded = [responses_decoded[i * args.grpo_sample_N + idx] for i, idx in enumerate(random_indices)]
                 responses_decoded = [r.replace('[PAD]','') for r in responses_decoded]
 
 
